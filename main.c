@@ -22,18 +22,23 @@
 
 void  main(void) {
   
+  CAMERA_userInit();  
   LED_userInit();
   IMU_userInit();
+  FTM_userInit();  
   IRQ_userInit();
-  FTM_userInit();
-  
-  LCD_str((Site_t){0,0},"Cam init OK!",FCOLOUR,BCOLOUR);
-  LCD_FStr_CH((Site_t){0,110},vcan_str,sizeof(vcan_str)/LCD_CH_SIZE,FCOLOUR,BCOLOUR);
+
+  //LCD_str((Site_t){0,0},"Cam init OK!",FCOLOUR,BCOLOUR);
+  //LCD_FStr_CH((Site_t){0,110},vcan_str,sizeof(vcan_str)/LCD_CH_SIZE,FCOLOUR,BCOLOUR);
   
   while(1){
-    if(is_update) {
+    if(is_pit_updated) {
       status_update();
-      is_update = 0;
+      is_pit_updated = 0;
+    }
+    if(!img_prepared) {
+      camera_get_img();
+      img_prepared = 1;
     }
     
     //LCD_Img_Binary_Z((Site_t){0,0}, (Size_t){LCD_W,LCD_H}, imgbuff, imgsize);       //LCDœ‘ æ

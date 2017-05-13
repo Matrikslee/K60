@@ -1,21 +1,20 @@
+#include "interface.h"
 #include "MK60_ADC.h"
 #include "MK60_FTM.h"
 #include "VCAN_LED.h"
 #include "VCAN_CAMERA.h"
-#include "common.h"
 #include "tools.h"
 #include "isr.h"
-#include "interface.h"
 
 #define MAX_PWM_DUTY (10000)
 #define HALF_MAX_PWM_DUTY (MAX_PWM_DUTY/2)
 #define PWM_RIGHT FTM_CH5
 #define PWM_LEFT  FTM_CH6
 
-#define GYRO_X_OFFSET (0x085B)
+#define GYRO_X_OFFSET (0x0878)
 #define GYRO_Y_OFFSET (0)
 #define GYRO_Z_OFFSET (0)
-#define ACCZ_X_OFFSET (0x07C0)
+#define ACCZ_X_OFFSET (0x07b0)
 #define ACCZ_Y_OFFSET (0)
 #define ACCZ_Z_OFFSET (0)
 #define _PI (3.1415926f)
@@ -23,7 +22,7 @@
 
 // Memory to save img
 static uint8 imgbuff[CAMERA_SIZE];
-static uint8 img[CAMERA_H][CAMERA_W];
+uint8 img_prepared;
 
 static const ADCn_Ch_e ADC_Check_Maps[] = {
   ADC1_SE4a,    //ACCZ_X
@@ -60,9 +59,6 @@ float getIMUValue(uint8 index) {
 }
 
 void updateAngle(void) {
-  //const float dt = 0.005;
-  //const float beta = 0.99611;
-  //static float angle;
   float accz;
   float gyro;
 
@@ -71,16 +67,16 @@ void updateAngle(void) {
 
   gyro = getIMUValue(GYRO_X);
 
-  //angle = beta*(angle+gyro*dt)+(1-beta)*accz;
-
   ga.angle = accz;
   ga.angle_dot = gyro;
-
+  
   kalman_Filter(&ga);
 }
 
 void updateDirct(void) {
+  if(!img_prepared) return;
   int i,j;
+  uint8 img[CAMERA_H][CAMERA_W];
   float errs[CAMERA_H];
   float avg_x, avg_y;
   float num, den;
@@ -93,7 +89,7 @@ void updateDirct(void) {
     float tmp = 0;
     for ( j = 0; j < CAMERA_W; ++ j ) {
       if(img[i][j]) {
-        tmp += j-(CAMERA_W-1)/2.;
+        tmp += j+1-(CAMERA_W)/2.;
       }
     }
     //此处应该将图像处理结果翻转过来
@@ -108,12 +104,14 @@ void updateDirct(void) {
     num += (i-avg_x)*(errs[i]-avg_y);
     den += (i-avg_x)*(i-avg_x);
   }
-  a = (num/den)/CAMERA_H;
+  a = num/den;
   b = avg_y - a*avg_x;
 
   gd.slope = a;
   gd.offset = b;
   gd.advance = 0;
+  
+  img_prepared = 0;
 }
 
 void updateSpeed(void) {
@@ -146,8 +144,8 @@ void LED_userInit(void){
 void FTM_userInit(void){
   ftm_quad_init(FTM1);     //PTA12计数 PTA13方向
   ftm_quad_init(FTM2);     //PTA10计数 PTA11方向
-  ftm_pwm_init(FTM0, FTM_CH5, MAX_PWM_DUTY, HALF_MAX_PWM_DUTY);//PTD5
-  ftm_pwm_init(FTM0, FTM_CH6, MAX_PWM_DUTY, HALF_MAX_PWM_DUTY);//PTD6
+  ftm_pwm_init(FTM0, PWM_RIGHT, MAX_PWM_DUTY, HALF_MAX_PWM_DUTY);//PTD5
+  ftm_pwm_init(FTM0, PWM_LEFT, MAX_PWM_DUTY, HALF_MAX_PWM_DUTY);//PTD6
 }
 
 void CAMERA_userInit(void) {

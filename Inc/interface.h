@@ -1,6 +1,8 @@
 #ifndef __INTERFACE_H__
 #define __INTERFACE_H__
 
+#include "common.h"
+
 #define ACCZ_X (0)
 #define ACCZ_Y (1)
 #define ACCZ_Z (2)
@@ -40,6 +42,7 @@ struct dirct_t{
 void IMU_userInit(void);        //惯性单元初始化函数
 void LED_userInit(void);        //LED灯初始化函数
 void FTM_userInit(void);        //FTM通道初始化函数
+void CAMERA_userInit(void);
 
 void updateAngle(void);         //角度数据更新函数
 void updateSpeed(void);         //速度数据更新函数
@@ -55,5 +58,7 @@ extern const struct dirct_t *const pDirct;
 *  @input 范围-5000~5000
 */
 void motor_control(float left,float right);
+
+extern uint8 img_prepared;
 
 #endif

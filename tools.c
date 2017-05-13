@@ -10,8 +10,8 @@ void kalman_Filter(struct angle_t* ptr){
 //卡尔曼滤波参数与函数
   const float dt=0.005;
   //角度数据置信度,角速度数据置信度
-  const float Q_angle=0.001, Q_gyro=0.005; 
-  const float R_angle=0.5 ,C_0 = 1; 
+  const float Q_angle=0.0005, Q_gyro=0.0055; 
+  const float R_angle=0.75 ,C_0 = 1; 
   static float P[2][2] = {{ 1, 0 },{ 0, 1 }};
   static float q_bias;
   static float angle, angle_dot;

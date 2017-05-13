@@ -45,7 +45,6 @@ float speed_fit(float set_speed) {
     output += Ki * integration;
   }
   
-  // ? 考虑是否加微分项,如果加,应该用什么量当微分量
   return output;
 }
 
@@ -53,17 +52,19 @@ float turn_fit() {
   const float Kp = 20;
   const float Kd = 100;
   
-  return Kp*pDirct->offset + Kd*pDirct->slope; // 考虑如何加入提前量
+  return Kp*pDirct->offset + Kd*pDirct->slope;
 }
 
 void status_update(void) {
-  float set_angle = 5.6;
+  float set_angle = 1.5;
   float set_speed = 10;
   float pwm1, pwm2, turn_need;
   
   pwm1 = balance_fit(set_angle);
   pwm2 = speed_fit(set_speed);
   turn_need = turn_fit();
+  
+  //pwm2 = turn_need = 0;
   
   motor_control(pwm1-pwm2+turn_need, pwm1-pwm2-turn_need);
 }
