@@ -74,42 +74,46 @@ void updateAngle(void) {
 }
 
 void updateDirct(void) {
+  const uint8 threshold_img = 3;
+
+  float mid[CAMERA_H], sum;
+  
   if(!img_prepared) return;
-  int i,j;
+  uint8 i,j, len;
   uint8 img[CAMERA_H][CAMERA_W];
-  float errs[CAMERA_H];
-  float avg_x, avg_y;
-  float num, den;
-  float a,b;
 
   img_extract(img, imgbuff, CAMERA_SIZE);
-  avg_x = avg_y = 0;
-  for ( i = 0; i < CAMERA_H; ++ i ){
-    avg_x += i;
-    float tmp = 0;
-    for ( j = 0; j < CAMERA_W; ++ j ) {
-      if(img[i][j]) {
-        tmp += j+1-(CAMERA_W)/2.;
+  
+  sum = 0;
+
+  for ( i = 20, len = 0; i < CAMERA_H; ++i ) {
+    uint8 cnt = 0;
+    float left, right;
+    for ( j = 20; j < CAMERA_W; ++j ) {
+      if(!img[i][j]) {
+        if( ++cnt > threshold_img) {
+          right = j+1-cnt-CAMERA_W/2.;
+          break;
+        }
+      } else {
+        cnt = 0;
       }
     }
-    //此处应该将图像处理结果翻转过来
-    errs[CAMERA_H-1-i] = tmp/CAMERA_W;
-    avg_y += errs[CAMERA_H-1-i];
+    for ( j = 60, cnt = 0; j > 0; --j ) {
+      if(!img[i][j]) {
+        if( ++cnt > threshold_img) {
+          left = j+1+cnt-cnt-CAMERA_W/2.;
+          break;
+        }        
+      } else {
+        cnt = 0;
+      }
+    }
+    mid[CAMERA_H-i-1] = (left+right)/2;
+    sum += mid[CAMERA_H-i-1];
   }
-  avg_x /= CAMERA_H;
-  avg_y /= CAMERA_H;
-
-  num = den = 0;
-  for ( i = 0; i < CAMERA_H; ++ i ){
-    num += (i-avg_x)*(errs[i]-avg_y);
-    den += (i-avg_x)*(i-avg_x);
-  }
-  a = num/den;
-  b = avg_y - a*avg_x;
-
-  gd.slope = a;
-  gd.offset = b;
-  gd.advance = 0;
+ 
+  gd.offset = sum / (CAMERA_H-20);
   
   img_prepared = 0;
 }
@@ -152,14 +156,34 @@ void CAMERA_userInit(void) {
   camera_init(imgbuff);
 }
 
+static uint8 STOP;
+
 void motor_control(float left, float right){
-  const float dead_zone = 100;
+  const uint32 protect_v = 100;
+  const uint32 threshold = 100;
+  static uint32 cnt = 0;
+  
+  if(fabs(left) > HALF_MAX_PWM_DUTY*0.8 || fabs(right) > HALF_MAX_PWM_DUTY*0.8) {
+    if(cnt < threshold) {
+      ++cnt;
+    } else {
+      STOP = 1;
+    }
+  } else {
+    cnt = 0;
+  }
+  
+  if(STOP) {
+    ftm_pwm_duty(FTM0, PWM_RIGHT, HALF_MAX_PWM_DUTY);
+    ftm_pwm_duty(FTM0, PWM_LEFT, HALF_MAX_PWM_DUTY);
+    return;
+  }
+  
   left = HALF_MAX_PWM_DUTY+left;
   right = HALF_MAX_PWM_DUTY+right;
 
-  // 考虑死区的输出限幅
-  left = fconstrain(left, dead_zone, MAX_PWM_DUTY-dead_zone);
-  right= fconstrain(right,dead_zone, MAX_PWM_DUTY-dead_zone);
+  left = fconstrain(left, protect_v, MAX_PWM_DUTY-protect_v);
+  right= fconstrain(right,protect_v, MAX_PWM_DUTY-protect_v);
 
   ftm_pwm_duty(FTM0, PWM_RIGHT, (uint32)right);
   ftm_pwm_duty(FTM0, PWM_LEFT, (uint32)left);

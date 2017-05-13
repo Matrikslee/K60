@@ -35,7 +35,6 @@ struct speed_t{
 struct dirct_t{
   float slope;   //图像中线斜率
   float offset;  //小车离中线的偏移
-  float advance; //考虑速度时的转向提前量
 };
 
 // 初始化接口函数

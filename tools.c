@@ -10,14 +10,15 @@ void kalman_Filter(struct angle_t* ptr){
 //卡尔曼滤波参数与函数
   const float dt=0.005;
   //角度数据置信度,角速度数据置信度
-  const float Q_angle=0.0005, Q_gyro=0.0055; 
-  const float R_angle=0.75 ,C_0 = 1; 
+  const float Q_angle=0.005, Q_gyro=0.01; 
+  const float R_angle=14 ,C_0 = 1; 
   static float P[2][2] = {{ 1, 0 },{ 0, 1 }};
   static float q_bias;
   static float angle, angle_dot;
   
   float Pdot[4];
   float angle_err, PCt_0, PCt_1, E, K_0, K_1, t_0, t_1;
+  
 //angleAx 和 gyroGy
   angle += (ptr->angle_dot-q_bias) * dt;
   angle_err = ptr->angle - angle;
@@ -52,4 +53,28 @@ void kalman_Filter(struct angle_t* ptr){
   //output
   ptr->angle = angle;
   ptr->angle_dot = angle_dot;
+}
+
+void least_squares_fit(struct least_squares_t* p){
+  uint32 i;
+  float num, den;
+  float avgx, avgy;
+  avgx = avgy = 0;
+  
+  for ( i = 0; i < p->len; ++i) {
+    avgx += p->x[i];
+    avgy += p->y[i];
+  }
+  
+  avgx /= p->len;
+  avgy /= p->len;
+  
+  num = den = 0;
+  for ( i = 0; i < p->len; ++i) {
+    num += (p->x[i]-avgx)*(p->y[i]-avgy);
+    den += (p->x[i]-avgx)*(p->x[i]-avgx);
+  }
+  
+  p->slope = num/den;
+  p->offset = avgy;
 }

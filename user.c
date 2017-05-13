@@ -14,21 +14,23 @@
  * @version    v1.0
  * @date       2016-12-12
  */
+#include "user.h"
 #include "include.h"
 #include "interface.h"
 #include "common.h"
 #include "tools.h"
 
 float balance_fit(float set_angle) {
-  const float Kp = 1200;
-  const float Kd = 20;
+  const float Kp = 1100;
+  const float Kd = 18;
   
   return Kp*(pAngle->angle - set_angle) + Kd*pAngle->angle_dot;
 }
 
 float speed_fit(float set_speed) {
+  const float Ilimit = 100;
   const float threshold = 10;
-  const float Kp = 100;
+  const float Kp = 10;
   const float Ki = 2;
   static float integration;
   
@@ -42,6 +44,7 @@ float speed_fit(float set_speed) {
   //积分分离的PID
   if(fabs(error) > threshold) {
     integration += error;
+    integration = fconstrain(integration, -Ilimit, Ilimit);
     output += Ki * integration;
   }
   
@@ -49,22 +52,32 @@ float speed_fit(float set_speed) {
 }
 
 float turn_fit() {
-  const float Kp = 20;
-  const float Kd = 100;
+  const float Kp = 15;
+  const float Kd = 120;
   
-  return Kp*pDirct->offset + Kd*pDirct->slope;
+  static float last_err;
+  
+  float error;
+  
+  error = pDirct->offset;
+  
+  return Kp*error + Kd*(last_err-error);
 }
 
 void status_update(void) {
+  static uint8 cnt;
   float set_angle = 1.5;
   float set_speed = 10;
-  float pwm1, pwm2, turn_need;
+  float balance, speed, turn;
+    
+  balance = balance_fit(set_angle);
+  speed = speed_fit(set_speed);
+  turn = turn_fit();
   
-  pwm1 = balance_fit(set_angle);
-  pwm2 = speed_fit(set_speed);
-  turn_need = turn_fit();
+  if(cnt < 200) {
+    ++cnt;
+    speed = turn = 0;
+  }
   
-  //pwm2 = turn_need = 0;
-  
-  motor_control(pwm1-pwm2+turn_need, pwm1-pwm2-turn_need);
+  motor_control(balance-speed+turn, balance-speed-turn);
 }
